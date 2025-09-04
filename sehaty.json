@@ -1,0 +1,331 @@
+{
+  "name": "Sehaty – Telegram to Google Sheets (Text-only v1)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "node-cron",
+      "name": "Cron - Every 1 min",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -1140,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"WEB_APP_URL\": \"https://script.google.com/macros/s/AKfycbyMMrw-upBPv6Jodaa2yXBvdqt1SPe68Gg0s3MVUMgvLanrMPqweiZcNBN1dQqIqUwJ0g/exec\",\n  \"WEB_APP_SECRET\": \"SEHATY_MH51sl7I9jHb0XugAGwlvksMAbOml6SyUTppzxHJ7mJxMnth\",\n  \"TELEGRAM_BOT_TOKEN\": \"8294498979:AAFgyGlclrZdhustT-4hVWiURuFAbCXZXls\",\n  \"TIMEZONE\": \"Asia/Riyadh\",\n  \"SHEET_NAME\": \"Workout\"\n}",
+        "options": {}
+      },
+      "id": "node-config",
+      "name": "Set - Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -940,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.telegram.org/bot' + $json.TELEGRAM_BOT_TOKEN + '/deleteWebhook' }}",
+        "options": {
+          "response": {}
+        }
+      },
+      "id": "node-delwh",
+      "name": "Telegram - deleteWebhook (once)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -520,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.telegram.org/bot' + $json.TELEGRAM_BOT_TOKEN + '/getUpdates' }}",
+        "options": {
+          "response": {},
+          "timeout": 60000
+        }
+      },
+      "id": "node-getupdates",
+      "name": "Telegram - getUpdates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -520,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Output comes as one item from getUpdates\nconst res = items[0]?.json;\nif (!res || res.ok === false) return [];\n\n// Use static data to remember last processed update_id\nconst data = $execution.getWorkflowStaticData('global');\nlet last = Number(data.last_update_id || 0);\nlet maxId = last;\n\nconst out = [];\nfor (const u of (res.result || [])) {\n  if (typeof u.update_id !== 'number') continue;\n  if (u.update_id <= last) continue; // skip old/duplicate\n  if (u.update_id > maxId) maxId = u.update_id;\n\n  const m = u.message || u.channel_post || u.edited_message || u.edited_channel_post;\n  if (!m) continue;\n\n  const text = (m.text || m.caption || '').trim();\n  const photos = Array.isArray(m.photo) ? m.photo : [];\n  const file_id = photos.length ? photos[photos.length - 1].file_id : null;\n\n  out.push({\n    json: {\n      update_id: u.update_id,\n      chat_id: m.chat.id,\n      message_id: m.message_id,\n      date: m.date,\n      text,\n      has_photo: !!file_id,\n      file_id\n    }\n  });\n}\n\n// Save latest id so next poll does not reprocess\ndata.last_update_id = maxId;\nreturn out;\n"
+      },
+      "id": "node-parse",
+      "name": "Code – Parse Updates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.has_photo}}",
+              "operation": "isFalse"
+            }
+          ]
+        }
+      },
+      "id": "node-if-text",
+      "name": "IF text only",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.has_photo}}",
+              "operation": "isTrue"
+            }
+          ]
+        }
+      },
+      "id": "node-if-photo",
+      "name": "IF has photo",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        80,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const cfg = $items('Set - Config',0,0)[0].json;\nconst now = new Date();\n// format minutes from treadmill 'time' mm:ss to minutes (float)\nfunction toMinutes(s){\n  if(!s) return '';\n  const parts = String(s).split(':');\n  if (parts.length===2) return (parseInt(parts[0],10) + parseInt(parts[1],10)/60).toFixed(2);\n  const n = parseFloat(s);\n  return isFinite(n)? n : '';\n}\n// parse key=value pairs from Telegram text\nconst kv = {};\n(String($json.text||'')).split(/[\\s,]+/).forEach(tok=>{\n  const [k,...rest] = tok.split('=');\n  if(!k||!rest.length) return;\n  kv[k.trim().toLowerCase()] = rest.join('=').trim();\n});\n\nconst speed = kv.speed ? Number(kv.speed) : '';\nconst kcal  = kv.kcal || kv.calories || kv.cals || '';\nconst dist  = kv.dist || kv.distance || '';\nconst tmm   = kv.time || '';\nconst pace  = kv.pace || '';\nconst dev   = kv.dev || kv.device || '';\n\nconst row = {\n  \"التاريخ\": now.toISOString(),\n  \"نوع\": dev ? `جهاز ${dev}` : \"تمرين جهاز\",\n  \"الشدة\": speed,\n  \"المدة(د)\": toMinutes(tmm),\n  \"سعرات مقدَّرة\": kcal,\n  \"ملاحظات\": `dist=${dist} pace=${pace}`.trim()\n};\n\nreturn [{\n  json: {\n    chat_id: $json.chat_id,\n    row,\n    confirm_text: `تم تسجيل تمرينك ✅\\nالمدة: ${row[\"المدة(د)\"]||''} دقيقة\\nالسعرات: ${row[\"سعرات مقدَّرة\"]||''}`\n  }\n}];\n"
+      },
+      "id": "node-buildtext",
+      "name": "Function - Build Row (text)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        360,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$items('Set - Config',0,0)[0].json.WEB_APP_URL}}",
+        "jsonParameters": true,
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParametersJson": "={{ JSON.stringify({ key: $items('Set - Config',0,0)[0].json.WEB_APP_SECRET, action: 'appendByHeaders', sheet: $items('Set - Config',0,0)[0].json.SHEET_NAME, row: $json.row }) }}",
+        "options": {
+          "response": {},
+          "timeout": 60000
+        }
+      },
+      "id": "node-gas-append",
+      "name": "GAS - appendByHeaders (Workout)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        640,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "json",
+        "jsonParameters": true,
+        "values": {
+          "string": [
+            {
+              "name": "chat_id",
+              "value": "={{$json.chat_id}}"
+            },
+            {
+              "name": "confirm_text",
+              "value": "📷 تم استلام الصورة. رجاء أرسل القيم نصيًا الآن. (يمكن تفعيل OCR لاحقًا)"
+            }
+          ]
+        }
+      },
+      "id": "node-set-photo",
+      "name": "Set – Confirm (photo)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        360,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{'https://api.telegram.org/bot'+$items('Set - Config',0,0)[0].json.TELEGRAM_BOT_TOKEN+'/sendMessage'}}",
+        "jsonParameters": true,
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParametersJson": "={{ JSON.stringify({ chat_id: $json.chat_id, text: ($json.confirm_text || 'تم التسجيل ✅'), parse_mode: 'HTML' }) }}",
+        "options": {
+          "response": {},
+          "timeout": 60000
+        }
+      },
+      "id": "node-tg-confirm",
+      "name": "Telegram - Confirm",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        900,
+        40
+      ]
+    }
+  ],
+  "connections": {
+    "Cron - Every 1 min": {
+      "main": [
+        [
+          {
+            "node": "Set - Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Config": {
+      "main": [
+        [
+          {
+            "node": "Telegram - deleteWebhook (once)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram - getUpdates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram - getUpdates": {
+      "main": [
+        [
+          {
+            "node": "Code – Parse Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code – Parse Updates": {
+      "main": [
+        [
+          {
+            "node": "IF text only",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF has photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF text only": {
+      "main": [
+        [
+          {
+            "node": "Function - Build Row (text)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function - Build Row (text)": {
+      "main": [
+        [
+          {
+            "node": "GAS - appendByHeaders (Workout)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF has photo": {
+      "main": [
+        [
+          {
+            "node": "Set – Confirm (photo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GAS - appendByHeaders (Workout)": {
+      "main": [
+        [
+          {
+            "node": "Telegram - Confirm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set – Confirm (photo)": {
+      "main": [
+        [
+          {
+            "node": "Telegram - Confirm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": []
+}
