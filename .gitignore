@@ -1,0 +1,10 @@
+# Python/OS junk
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+
+# Node/npm
+node_modules/
+dist/
+.build/
