@@ -1,5 +1,6 @@
+---
 name: Deploy to n8n
-on:
+'on':
   push:
     paths:
       - 'workflows/sehaty.json'
@@ -18,20 +19,30 @@ jobs:
 
       - name: Upsert workflow in n8n
         env:
-          N8N_URL: ${{ secrets.N8N_URL }}        # مثال: http://127.0.0.1:5678 أو https://your-n8n.example.com
-          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}# Personal Access Token من n8n
+          # مثال: http://127.0.0.1:5678 أو https://your-n8n.example.com
+          N8N_URL: ${{ secrets.N8N_URL }}
+          # Personal Access Token من n8n
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
         run: |
           set -e
           WF_FILE="workflows/sehaty.json"
           NAME=$(jq -r '.name' "$WF_FILE")
 
-          EXIST=$(curl -sS -H "X-N8N-API-KEY: $N8N_API_KEY" "$N8N_URL/api/v1/workflows?filter[name]=$NAME")
+          EXIST=$(curl -sS \
+            -H "X-N8N-API-KEY: $N8N_API_KEY" \
+            "$N8N_URL/api/v1/workflows?filter[name]=$NAME")
           WF_ID=$(echo "$EXIST" | jq -r '.[0].id // empty')
 
           if [ -z "$WF_ID" ] || [ "$WF_ID" = "null" ]; then
             echo "Creating new workflow: $NAME"
-            curl -sS -X POST "$N8N_URL/api/v1/workflows"               -H "Content-Type: application/json"               -H "X-N8N-API-KEY: $N8N_API_KEY"               --data @"$WF_FILE"
+            curl -sS -X POST "$N8N_URL/api/v1/workflows" \
+              -H "Content-Type: application/json" \
+              -H "X-N8N-API-KEY: $N8N_API_KEY" \
+              --data @"$WF_FILE"
           else
             echo "Updating workflow id=$WF_ID name=$NAME"
-            curl -sS -X PUT "$N8N_URL/api/v1/workflows/$WF_ID"               -H "Content-Type: application/json"               -H "X-N8N-API-KEY: $N8N_API_KEY"               --data @"$WF_FILE"
+            curl -sS -X PUT "$N8N_URL/api/v1/workflows/$WF_ID" \
+              -H "Content-Type: application/json" \
+              -H "X-N8N-API-KEY: $N8N_API_KEY" \
+              --data @"$WF_FILE"
           fi
