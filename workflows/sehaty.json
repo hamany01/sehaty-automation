@@ -14,8 +14,31 @@
     },
     {
       "parameters": {
-        "mode": "raw",
-        "jsonOutput": "{\n  \"WEB_APP_URL\": \"https://script.google.com/macros/s/AKfycbyMMrw-upBPv6Jodaa2yXBvdqt1SPe68Gg0s3MVUMgvLanrMPqweiZcNBN1dQqIqUwJ0g/exec\",\n  \"WEB_APP_SECRET\": \"SEHATY_MH51sl7I9jHb0XugAGwlvksMAbOml6SyUTppzxHJ7mJxMnth\",\n  \"TELEGRAM_BOT_TOKEN\": \"8294498979:AAFgyGlclrZdhustT-4hVWiURuFAbCXZXls\",\n  \"TIMEZONE\": \"Asia/Riyadh\",\n  \"SHEET_NAME\": \"Workout\"\n}",
+        "mode": "manual",
+        "values": {
+          "string": [
+            {
+              "name": "WEB_APP_URL",
+              "value": "={{ $env.WEB_APP_URL }}"
+            },
+            {
+              "name": "WEB_APP_SECRET",
+              "value": "={{ $env.WEB_APP_SECRET }}"
+            },
+            {
+              "name": "TELEGRAM_BOT_TOKEN",
+              "value": "={{ $env.TELEGRAM_BOT_TOKEN }}"
+            },
+            {
+              "name": "TIMEZONE",
+              "value": "Asia/Riyadh"
+            },
+            {
+              "name": "SHEET_NAME",
+              "value": "Workout"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "node-config",
