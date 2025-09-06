@@ -1,6 +1,5 @@
 {
-  "name": "Sehaty – Core Bridge (Telegram + GAS)",
-  "active": true,
+  "name": "Sehaty – Core (Telegram + GAS) – v1",
   "nodes": [
     {
       "parameters": {
@@ -12,275 +11,237 @@
           ]
         }
       },
-      "id": "CronEvery1Min",
+      "id": "n1",
       "name": "Cron - Every 1 min",
       "type": "n8n-nodes-base.cron",
-      "typeVersion": 2,
-      "position": [
-        260,
-        260
-      ]
+      "typeVersion": 1,
+      "position": [ -1200, -100 ]
     },
     {
       "parameters": {
         "mode": "json",
-        "json": {
-          "WEB_APP_URL": "https://script.google.com/macros/s/AKfycbyMMrw-upBPv6Jodaa2yXBvdqt1SPe68Gg0s3MVUMgvLanrMPqweiZcNBN1dQqIqUwJ0g/exec",
-          "WEB_APP_SECRET": "SEHATY_MH51sl7I9jHb0XugAGwlvksMAbOml6SyUTppzxHJ7mJxMnth",
-          "TELEGRAM_BOT_TOKEN": "8294498979:AAFgyGlclrZdhustT-4hVWiURuFAbCXZXls",
-          "TIMEZONE": "Asia/Riyadh"
+        "jsonParameters": true,
+        "options": {
+          "setAllData": false
         },
-        "options": {
-          "keepOnlySet": false
-        }
-      },
-      "id": "SetConfig",
-      "name": "Set - Config",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
-      "position": [
-        520,
-        260
-      ]
-    },
-    {
-      "parameters": {
-        "functionCode": "if (!$json.TELEGRAM_BOT_TOKEN) {\n  throw new Error('TELEGRAM_BOT_TOKEN مفقود من Set - Config');\n}\nreturn items;"
-      },
-      "id": "AssertToken",
-      "name": "Function - Assert Token",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2,
-      "position": [
-        770,
-        260
-      ]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "={{ 'https://api.telegram.org/bot' + $json.TELEGRAM_BOT_TOKEN + '/deleteWebhook' }}",
-        "responseFormat": "json",
-        "options": {
-          "timeout": 300000
-        }
-      },
-      "id": "TGDeleteWebhook",
-      "name": "Telegram - deleteWebhook (once)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [
-        1020,
-        260
-      ]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "={{ 'https://api.telegram.org/bot' + $items('Set - Config',0,0)[0].json.TELEGRAM_BOT_TOKEN + '/getUpdates' }}",
-        "responseFormat": "json",
-        "options": {
-          "timeout": 60000
-        }
-      },
-      "id": "TGGetUpdates",
-      "name": "Telegram - getUpdates",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [
-        1270,
-        260
-      ]
-    },
-    {
-      "parameters": {
-        "functionCode": "// يتوقع items[0].json = نتيجة getUpdates\nconst res = items[0]?.json;\nif (!res || res.ok === false) return [];\n\nconst out = [];\nfor (const u of (res.result || [])) {\n  const m = u.message || u.channel_post || u.edited_message || u.edited_channel_post;\n  if (!m) continue;\n\n  const text = (m.text || m.caption || '').trim();\n  const photos = Array.isArray(m.photo) ? m.photo : [];\n  const file_id = photos.length ? photos[photos.length - 1].file_id : null;\n\n  out.push({\n    json: {\n      update_id: u.update_id,\n      chat_id: m.chat.id,\n      message_id: m.message_id,\n      date: m.date,\n      text,\n      has_photo: !!file_id,\n      file_id\n    }\n  });\n}\nreturn out;"
-      },
-      "id": "ParseUpdates",
-      "name": "Function – Parse Updates",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2,
-      "position": [
-        1520,
-        260
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "string": [
+        "values": {
+          "json": [
             {
-              "value1": "={{$json[\"text\"]}}",
-              "operation": "equals",
-              "value2": "/start"
+              "name": "WEB_APP_URL",
+              "value": "https://script.google.com/macros/s/AKfycbyMMrw-upBPv6Jodaa2yXBvdqt1SPe68Gg0s3MVUMgvLanrMPqweiZcNBN1dQqIqUwJ0g/exec"
+            },
+            {
+              "name": "WEB_APP_SECRET",
+              "value": "SEHATY_MH51sl7I9jHb0XugAGwlvksMAbOml6SyUTppzxHJ7mJxMnth"
+            },
+            {
+              "name": "TELEGRAM_BOT_TOKEN",
+              "value": "8294498979:AAFgyGlclrZdhustT-4hVWiURuFAbCXZXls"
+            },
+            {
+              "name": "TIMEZONE",
+              "value": "Asia/Riyadh"
             }
           ]
         }
       },
-      "id": "IfIsStart",
-      "name": "IF - is /start",
-      "type": "n8n-nodes-base.if",
+      "id": "n2",
+      "name": "Set - Config",
+      "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [
-        1770,
-        260
-      ]
+      "position": [ -980, -100 ]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $items('Set - Config',0,0)[0].json.WEB_APP_URL }}",
-        "jsonParameters": true,
+        "functionCode": "const data = getWorkflowStaticData('global');\nif (typeof data.last_update_id !== 'number') data.last_update_id = 0;\nreturn [{ json: { last_update_id: data.last_update_id } }];"
+      },
+      "id": "n3",
+      "name": "Function - Get State",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [ -770, -100 ]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition",
+        "join": "combine"
+      },
+      "id": "n4",
+      "name": "Merge (Config + State)",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [ -560, -100 ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.telegram.org/bot' + $json.TELEGRAM_BOT_TOKEN + '/deleteWebhook' }}",
         "options": {
+          "ignoreResponseCode": true,
+          "responseFormat": "json",
+          "timeout": 300000
+        }
+      },
+      "id": "n5",
+      "name": "Telegram - deleteWebhook (once)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [ -350, -210 ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.telegram.org/bot' + $json.TELEGRAM_BOT_TOKEN + '/getUpdates' }}",
+        "queryParametersUi": {
+          "parameter": [
+            {
+              "name": "offset",
+              "value": "={{ ($json.last_update_id || 0) + 1 }}"
+            },
+            {
+              "name": "allowed_updates",
+              "value": "[\"message\", \"edited_message\", \"channel_post\", \"edited_channel_post\"]"
+            }
+          ]
+        },
+        "options": {
+          "responseFormat": "json",
+          "timeout": 60000
+        }
+      },
+      "id": "n6",
+      "name": "Telegram - getUpdates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [ -350, -10 ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// expects items[0].json from getUpdates\nconst res = items[0]?.json;\nif (!res || res.ok === false) return [];\nconst data = getWorkflowStaticData('global');\nlet maxId = data.last_update_id || 0;\nconst out = [];\nfor (const u of (res.result || [])) {\n  if (typeof u.update_id === 'number' && u.update_id > maxId) maxId = u.update_id;\n  const m = u.message || u.channel_post || u.edited_message || u.edited_channel_post;\n  if (!m) continue;\n  const text = (m.text || m.caption || '').trim();\n  const photos = Array.isArray(m.photo) ? m.photo : [];\n  const file_id = photos.length ? photos[photos.length - 1].file_id : null;\n  out.push({ json: { chat_id: m.chat?.id, message_id: m.message_id, text, has_photo: !!file_id, file_id } });\n}\ndata.last_update_id = maxId;\nreturn out;"
+      },
+      "id": "n7",
+      "name": "Function - Parse Updates",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [ -120, -10 ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.telegram.org/bot' + $items('Merge (Config + State)', 0, 0)[0].json.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "options": {
+          "responseFormat": "json",
           "timeout": 60000
         },
-        "bodyParametersJson": "={{ JSON.stringify({ key: $items('Set - Config',0,0)[0].json.WEB_APP_SECRET, action: 'upsertSetting', kv: { ALERTS_CHAT_ID: $json.chat_id } }) }}"
+        "sendBody": true,
+        "jsonParameters": true,
+        "bodyParametersJson": "={{ { chat_id: $json.chat_id, text: 'تم الربط ✅\\n(نصك): ' + ($json.text || 'بدون نص') } }}"
       },
-      "id": "GASSaveChat",
-      "name": "GAS - Save ALERTS_CHAT_ID",
+      "id": "n8",
+      "name": "Telegram - sendMessage (echo)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [
-        2020,
-        160
-      ]
+      "position": [ 140, -10 ]
+    },
+    {
+      "parameters": {},
+      "id": "n9",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [ -1200, 220 ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "={{ 'https://api.telegram.org/bot' + $items('Set - Config',0,0)[0].json.TELEGRAM_BOT_TOKEN + '/sendMessage?chat_id=' + $json.chat_id + '&text=' + encodeURIComponent('✅ تم ربط التنبيهات بنجاح. الآن استقبلت أمرك /start') }}",
-        "responseFormat": "json",
+        "url": "={{ $items('Set - Config', 0, 0)[0].json.WEB_APP_URL + '?key=' + encodeURIComponent($items('Set - Config', 0, 0)[0].json.WEB_APP_SECRET) + '&action=read&range=Vitals!A:H' }}",
         "options": {
+          "responseFormat": "json",
           "timeout": 60000
         }
       },
-      "id": "TGSendAck",
-      "name": "Telegram - sendMessage (ack)",
+      "id": "n10",
+      "name": "GAS - Read Vitals (test)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [
-        2270,
-        160
-      ]
+      "position": [ -980, 220 ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "={{ 'https://api.telegram.org/bot' + $items('Set - Config',0,0)[0].json.TELEGRAM_BOT_TOKEN + '/sendMessage?chat_id=' + $json.chat_id + '&text=' + encodeURIComponent('👋 أرسل /start لربط التنبيهات، أو أرسل أي قراءة/صورة وسأتولى المعالجة.') }}",
-        "responseFormat": "json",
+        "url": "={{ $items('Set - Config', 0, 0)[0].json.WEB_APP_URL }}",
         "options": {
+          "responseFormat": "json",
           "timeout": 60000
-        }
+        },
+        "sendBody": true,
+        "jsonParameters": true,
+        "bodyParametersJson": "={{ { key: $items('Set - Config',0,0)[0].json.WEB_APP_SECRET, action: 'appendByHeaders', sheet: 'Workout', row: { التاريخ: new Date().toISOString(), نوع: 'اختبار', الشدة: 'متوسط', 'المدة(د)': 10, 'سعرات مقدَّرة': 50, ملاحظات: 'from n8n test' } } }}"
       },
-      "id": "TGSendHelp",
-      "name": "Telegram - sendMessage (help)",
+      "id": "n11",
+      "name": "GAS - Append Workout (test)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [
-        2020,
-        360
-      ]
+      "position": [ -740, 220 ]
     }
   ],
   "connections": {
     "Cron - Every 1 min": {
       "main": [
         [
-          {
-            "node": "Set - Config",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Set - Config", "type": "main", "index": 0 }
         ]
       ]
     },
     "Set - Config": {
       "main": [
         [
-          {
-            "node": "Function - Assert Token",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Function - Get State", "type": "main", "index": 0 },
+          { "node": "GAS - Read Vitals (test)", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Function - Assert Token": {
+    "Function - Get State": {
       "main": [
         [
-          {
-            "node": "Telegram - deleteWebhook (once)",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Merge (Config + State)", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Telegram - deleteWebhook (once)": {
+    "Merge (Config + State)": {
       "main": [
         [
-          {
-            "node": "Telegram - getUpdates",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Telegram - deleteWebhook (once)", "type": "main", "index": 0 },
+          { "node": "Telegram - getUpdates", "type": "main", "index": 0 }
         ]
       ]
     },
     "Telegram - getUpdates": {
       "main": [
         [
-          {
-            "node": "Function – Parse Updates",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Function - Parse Updates", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Function – Parse Updates": {
+    "Function - Parse Updates": {
       "main": [
         [
-          {
-            "node": "IF - is /start",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Telegram - sendMessage (echo)", "type": "main", "index": 0 }
         ]
       ]
     },
-    "IF - is /start": {
+    "Manual Trigger": {
       "main": [
         [
-          {
-            "node": "GAS - Save ALERTS_CHAT_ID",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Telegram - sendMessage (help)",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Set - Config", "type": "main", "index": 0 }
         ]
       ]
     },
-    "GAS - Save ALERTS_CHAT_ID": {
+    "GAS - Read Vitals (test)": {
       "main": [
         [
-          {
-            "node": "Telegram - sendMessage (ack)",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "GAS - Append Workout (test)", "type": "main", "index": 0 }
         ]
       ]
     }
   },
-  "settings": {
-    "timezone": "Asia/Riyadh"
-  },
-  "pinData": {}
+  "pinData": {},
+  "settings": {},
+  "staticData": {},
+  "version": 2
 }
