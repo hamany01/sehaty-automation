@@ -19,7 +19,7 @@ jobs:
       - name: Upsert workflow in n8n
         env:
           N8N_URL: ${{ secrets.N8N_URL }}        # مثال: http://127.0.0.1:5678 أو https://your-n8n.example.com
-          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}# Personal Access Token من n8n
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}  # Personal Access Token من n8n
         run: |
           set -e
           WF_FILE="workflows/sehaty.json"
